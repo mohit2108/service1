@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      type: service1
+  template:
+    metadata:
+      labels:
+        type: service1
+    spec:
+      containers:
+        - name: service1
+          image: docker.repo1.uhc.com/prometheus/service1:latest
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsUser: 1000
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 60

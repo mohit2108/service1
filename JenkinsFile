@@ -1,0 +1,60 @@
+#!/usr/bin/env groovy
+
+@Library("com.*****.jenkins.pipeline.library@master") _
+
+import com.*****.jenkins.pipeline.library.kubernetes.Kubernetes
+
+def env = 'dev'
+
+def clusters = ['dev': 'k8s-dash-nonprod-ctc.*****.com']
+
+def namespaces = [ 'dev': 'techpython2']
+
+def tokenIds = ['dev': 'service1']
+
+def cluster = clusters.get(env)
+def namespace = namespaces.get(env)
+def tokenId = tokenIds.get(env)
+                
+pipeline  {
+    agent { label 'docker-kitchensink-slave' }
+
+    environment {
+        DOCKER_VERSION=''
+        KUBECTL_VERSION=''
+        DOCKER_REGISTRY='docker.repo1.uhc.com'
+    }
+
+    stages {
+        stage('publish') {
+            when {
+                branch 'master'
+            }
+            environment {
+                DOCKER_CREDS = credentials('service1-nonuser')
+            }
+            steps {
+                sh '''
+                . /etc/profile.d/jenkins.sh
+                docker login "$DOCKER_REGISTRY" -u "$DOCKER_CREDS_USR" -p "$DOCKER_CREDS_PSW"
+                make docker-push
+                '''
+            }
+        }
+        stage ('Set k8s context') {
+            steps {
+                script {
+                    k8s.configureKubectl(credentials:tokenId, cluster:cluster, namespace:namespace)
+                        }
+                   }
+                }
+        stage('deploy') {
+            steps {
+                sh '''
+                . /etc/profile.d/jenkins.sh
+                make deploy
+                '''
+            }
+        }
+    }
+}
